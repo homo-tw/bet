@@ -25,6 +25,32 @@ namespace Homo.Bet.Api
                 .Sum(x => x.Type == COIN_LOG_TYPE.EARN ? x.Qty : -x.Qty);
         }
 
+        // 一次取得多位使用者的 coins 餘額（計算方式同 GetEarnCoins），沒有紀錄的人為 0
+        public static Dictionary<long, int> GetEarnCoinsByOwners(BargainingChipDBContext dbContext, List<long> ownerIds)
+        {
+            var sums = dbContext.CoinLog
+                .Where(x =>
+                    x.DeletedAt == null
+                    && ownerIds.Contains(x.OwnerId)
+                    && (x.Type == COIN_LOG_TYPE.EARN || x.Type == COIN_LOG_TYPE.BUY || x.Type == COIN_LOG_TYPE.TRANSFER_TO || x.Type == COIN_LOG_TYPE.PUNISHMENT_FOR_INSUFFICIENT_WORKING_HOURS)
+                )
+                .GroupBy(x => new { x.OwnerId, x.Type })
+                .Select(g => new
+                {
+                    g.Key.OwnerId,
+                    g.Key.Type,
+                    Qty = g.Sum(x => x.Qty)
+                })
+                .ToList();
+
+            var result = ownerIds.Distinct().ToDictionary(id => id, id => 0);
+            foreach (var item in sums)
+            {
+                result[item.OwnerId] += item.Type == COIN_LOG_TYPE.EARN ? item.Qty : -item.Qty;
+            }
+            return result;
+        }
+
         public static int GetBetCoins(BargainingChipDBContext dbContext, long userId)
         {
             return dbContext.CoinLog

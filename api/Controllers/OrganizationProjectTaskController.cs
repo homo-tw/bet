@@ -229,14 +229,17 @@ namespace Homo.Bet.Api
             }
             TaskDataservice.Done(_dbContext, extraPayload.Id, task);
             int coins = CoinsLogDataService.GetTaskBetCoins(_dbContext, task.Id);
-            CoinsLogDataService.Create(_dbContext, task.AssigneeId.GetValueOrDefault(), task.Id, extraPayload.Id, COIN_LOG_TYPE.EARN, new DTOs.CoinLog() { Qty = -coins });
+            long assigneeId = task.AssigneeId.GetValueOrDefault();
+            int assigneeMultiplier = CardEffectDataservice.GetEarnMultiplier(_dbContext, assigneeId);
+            CoinsLogDataService.Create(_dbContext, assigneeId, task.Id, extraPayload.Id, COIN_LOG_TYPE.EARN, new DTOs.CoinLog() { Qty = -coins * assigneeMultiplier });
 
             int bonus = coins == 0 ? 0 : (int)System.Math.Ceiling(((decimal)System.Math.Abs(coins) / (decimal)5));
             if (bonus <= 0)
             {
                 bonus = 1;
             }
-            CoinsLogDataService.Create(_dbContext, extraPayload.Id, task.Id, extraPayload.Id, COIN_LOG_TYPE.EARN, new DTOs.CoinLog() { Qty = bonus });
+            int reviewerMultiplier = CardEffectDataservice.GetEarnMultiplier(_dbContext, extraPayload.Id);
+            CoinsLogDataService.Create(_dbContext, extraPayload.Id, task.Id, extraPayload.Id, COIN_LOG_TYPE.EARN, new DTOs.CoinLog() { Qty = bonus * reviewerMultiplier });
             return new { status = Homo.Core.Constants.CUSTOM_RESPONSE.OK };
         }
     }

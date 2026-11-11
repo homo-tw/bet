@@ -169,7 +169,7 @@ namespace Homo.Bet.Api
         [Route("use")]
         public ActionResult<dynamic> UseCard([FromBody] DTOs.EquipCard dto, DTOs.JwtExtraPayload extraPayload)
         {
-            var userCard = _cardRepository.UseCard(extraPayload.Id, dto.UserCardId);
+            var userCard = _cardRepository.UseCard(extraPayload.Id, dto.UserCardId, out var effect);
 
             if (userCard == null)
             {
@@ -180,6 +180,7 @@ namespace Homo.Bet.Api
             {
                 message = "使用成功",
                 cardName = userCard.Card.Name,
+                effect,
                 userCard = new
                 {
                     id = userCard.Id,

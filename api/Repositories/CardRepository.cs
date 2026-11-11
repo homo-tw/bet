@@ -128,8 +128,9 @@ namespace Homo.Bet.Api
         }
 
         // 使用卡片（僅限魔法卡，使用後立即消失）
-        public UserCard UseCard(long userId, long userCardId)
+        public UserCard UseCard(long userId, long userCardId, out CardEffectResult effect)
         {
+            effect = null;
             var userCard = _dbContext.UserCard
                 .Include(x => x.Card)
                 .Where(x => x.DeletedAt == null && x.Id == userCardId && x.UserId == userId)
@@ -140,9 +141,19 @@ namespace Homo.Bet.Api
             // 只有魔法卡可以使用（陷阱卡和增益卡是裝備）
             if (userCard.Card.Type != CARD_TYPE.MAGIC) return null;
 
-            // 使用後立即 soft delete
-            userCard.DeletedAt = DateTime.Now;
-            _dbContext.SaveChanges();
+            using (var transaction = _dbContext.Database.BeginTransaction())
+            {
+                // 使用後立即 soft delete
+                userCard.DeletedAt = DateTime.Now;
+                _dbContext.SaveChanges();
+
+                if (userCard.Card.Name == CARD_NAME.EQUALIZE_WEALTH)
+                {
+                    effect = CardEffectDataservice.EqualizeWealth(_dbContext, userId);
+                }
+
+                transaction.Commit();
+            }
             return userCard;
         }
 
